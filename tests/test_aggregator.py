@@ -1,4 +1,4 @@
-from reviewer.aggregator import aggregate, consolidate
+from reviewer.aggregator import aggregate, consolidate, title_similarity
 from reviewer.models import AgentReport, Finding
 
 
@@ -62,3 +62,50 @@ def test_extra_findings_count_for_verdict():
     extra = [f(severity="critical", agents=["functional"])]
     result = aggregate([], "critical", extra_findings=extra)
     assert result.blocking
+
+
+# ---- duplicados entre agentes (títulos reales de la primera prueba con gpt-4.1-mini) --------
+
+def test_same_problem_from_different_agents_is_merged():
+    merged = consolidate([
+        f(file="repo.ts", line=49, severity="critical", agents=["security"],
+          title="Inyección SQL en consulta LIKE con interpolación directa del parámetro 'term'"),
+        f(file="repo.ts", line=49, severity="critical", agents=["design"],
+          title="Consulta SQL vulnerable a inyección SQL en searchByName"),
+        f(file="ctrl.ts", line=54, severity="critical", agents=["functional"],
+          title="No se valida que el parámetro q esté presente y no vacío"),
+        f(file="ctrl.ts", line=52, severity="major", agents=["design"],
+          title="Falta validación del parámetro 'q' en el controller para responder 400"),
+        f(file="ctrl.ts", line=53, severity="major", agents=["security"],
+          title="Falta validación del parámetro 'q' en el endpoint de búsqueda"),
+    ])
+    assert [(x.file, x.severity.value, x.agents) for x in merged] == [
+        ("ctrl.ts", "critical", ["design", "functional", "security"]),
+        ("repo.ts", "critical", ["design", "security"]),
+    ]
+    assert merged[0].title == "No se valida que el parámetro q esté presente y no vacío"
+
+
+def test_different_problems_of_the_same_agent_are_kept():
+    merged = consolidate([
+        f(file="ctrl.ts", line=54, agents=["functional"],
+          title="Falta caso de uso SearchUsersUseCase para la búsqueda de usuarios"),
+        f(file="ctrl.ts", line=54, agents=["functional"],
+          title="No se valida que el parámetro q esté presente y no vacío"),
+        f(file="ctrl.ts", line=54, agents=["functional"],
+          title="No se limita la cantidad máxima de usuarios devueltos a 20"),
+    ])
+    assert len(merged) == 3
+
+
+def test_similar_titles_far_apart_or_in_other_files_are_kept():
+    a = f(file="ctrl.ts", line=10, agents=["security"], title="Falta validación del parámetro q")
+    far = f(file="ctrl.ts", line=40, agents=["design"], title="Falta validación del parámetro q")
+    other = f(file="dto.ts", line=10, agents=["design"], title="Falta validación del parámetro q")
+    assert len(consolidate([a, far])) == 2
+    assert len(consolidate([a, other])) == 2
+
+
+def test_title_similarity_ignores_accents_and_word_forms():
+    assert title_similarity("No se valida el parámetro", "Falta validación del parametro") >= 0.5
+    assert title_similarity("Inyección SQL", "Ordenamiento de resultados") == 0.0

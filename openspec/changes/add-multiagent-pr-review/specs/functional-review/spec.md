@@ -41,6 +41,10 @@ El agente funcional SHALL evaluar cada requisito o criterio de aceptación de la
 - **WHEN** la tarea exige "responder 409 si el email ya existe" y el código responde 500 en ese caso
 - **THEN** se reporta un hallazgo `critical` que cita el criterio y el código responsable
 
+#### Scenario: Criterio afirmado solo en la descripción
+- **WHEN** la descripción del PR dice "limita los resultados a 20" y el código no aplica ningún límite
+- **THEN** el criterio se clasifica como "no cumple", no como "cumple"
+
 #### Scenario: Criterio no verificable
 - **WHEN** un criterio depende de código que no forma parte del PR ni de su contexto
 - **THEN** el criterio figura como "no verificable" en el resumen, sin hallazgo bloqueante

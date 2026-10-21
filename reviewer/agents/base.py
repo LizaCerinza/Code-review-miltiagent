@@ -69,6 +69,11 @@ recomendada; info = observación sin acción obligatoria.
 - confidence: high = lo verificaste en el código mostrado; medium = muy probable, pero \
 depende de código que no ves; low = sospecha que alguien debe confirmar.
 - Si no encuentras problemas, devuelve "findings" vacío. No inventes hallazgos.
+- "summary" debe ser coherente con "findings": no digas que algo se cumple o está bien si \
+reportaste lo contrario. Describe lo que verificaste en el código; nunca repitas como hecho \
+algo que solo afirma la descripción del PR o un comentario.
+- Reporta solo problemas de tu área (indicada en tu rol). Si ves algo de otra área, no lo \
+reportes: otro agente lo revisa.
 - Escribe summary, title, message y suggestion en español, de forma concreta y breve.
 """
 

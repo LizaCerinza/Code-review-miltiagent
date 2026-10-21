@@ -4,7 +4,8 @@ agent: functional
 description: Validación de los criterios de aceptación de la tarea
 ---
 Identifica cada requisito o criterio de aceptación de cada tarea de <tareas> y clasifícalo:
-- **cumple**: el código del PR lo implementa y puedes señalar dónde.
+- **cumple**: el código del PR lo implementa y puedes señalar el archivo y la línea. Lo que diga
+  la descripción del PR no cuenta como prueba.
 - **no cumple**: el código no lo implementa, o lo implementa distinto (otro código HTTP, otra
   validación, otro dato devuelto). Es un hallazgo con category `unmet-criterion`; usa severity
   `critical` si cambia el comportamiento observable de la API.

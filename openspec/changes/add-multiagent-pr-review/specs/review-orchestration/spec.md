@@ -55,11 +55,33 @@ Cada hallazgo MUST incluir: archivo, línea (0 si es general), severidad (`criti
 - **THEN** el hallazgo no se publica ni cuenta para el veredicto
 
 ### Requirement: Consolidación de hallazgos duplicados
-Cuando varios agentes reportan el mismo problema (mismo archivo, misma línea y mismo título normalizado), el revisor SHALL publicar un solo hallazgo. Ese hallazgo conserva la severidad más alta y lista a todos los agentes que lo reportaron.
+Cuando varios agentes reportan el mismo problema, el revisor SHALL publicar un solo hallazgo, que conserva la severidad más alta y lista a todos los agentes que lo reportaron. Es el mismo problema si coinciden archivo, línea y título normalizado, o si agentes distintos lo reportan en el mismo archivo, a pocas líneas de distancia y con títulos de significado equivalente.
 
 #### Scenario: Seguridad y diseño reportan lo mismo
 - **WHEN** el agente de seguridad (severidad `major`) y el de diseño (severidad `minor`) reportan el mismo problema en `users.controller.ts:42`
 - **THEN** se publica un único hallazgo con severidad `major`, atribuido a ambos agentes
+
+#### Scenario: Mismo problema con otras palabras
+- **WHEN** el agente de seguridad reporta "Inyección SQL en consulta LIKE" en la línea 49 y el de diseño reporta "Consulta SQL vulnerable a inyección SQL" en la misma línea
+- **THEN** se publica un único hallazgo atribuido a ambos agentes
+
+#### Scenario: Problemas distintos del mismo agente
+- **WHEN** el agente funcional reporta en la misma línea "Falta el caso de uso" y "No se limita a 20 resultados"
+- **THEN** se publican los dos hallazgos por separado
+
+### Requirement: Especialización de los agentes
+Cada agente SHALL reportar solo problemas de su área: el funcional, criterios de la tarea, alcance, afirmaciones y regresiones contra specs; el de seguridad, problemas explotables; el de diseño, arquitectura, patrones y estándares.
+
+#### Scenario: Vulnerabilidad vista por el agente de diseño
+- **WHEN** el diff contiene una consulta SQL armada con interpolación
+- **THEN** la reporta el agente de seguridad y el agente de diseño no la incluye entre sus hallazgos
+
+### Requirement: Resumen de agente coherente con sus hallazgos
+El resumen de cada agente MUST describir lo verificado en el código y MUST NOT contradecir sus propios hallazgos ni presentar como hecho algo que solo afirma la descripción del PR.
+
+#### Scenario: Descripción que afirma tests inexistentes
+- **WHEN** la descripción del PR dice "incluye tests unitarios y e2e" y el diff no agrega tests
+- **THEN** el resumen del agente funcional no afirma que el PR incluye tests
 
 ### Requirement: Veredicto bloqueante
 El revisor SHALL considerar la revisión bloqueante si algún hallazgo tiene severidad igual o mayor al umbral configurado (por defecto `critical`) y confianza `high`. Los hallazgos de confianza `medium` o `low` MUST NOT bloquear.

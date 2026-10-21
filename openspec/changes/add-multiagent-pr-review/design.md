@@ -116,6 +116,17 @@ El conocimiento de cada agente vive en `reviewer/skills/library/<agente>/<skill>
 - *Alternativas*: (a) Agent Skills nativas de Claude, que el modelo carga por su cuenta mediante herramientas: no existen en Azure OpenAI y convierten cada agente en un bucle agéntico de costo variable; (b) prompts monolíticos dentro del código (la versión anterior): más largos, mezclan temas que el PR no toca y no se pueden ampliar por repo; (c) leer las skills del repo desde el checkout del PR: más simple, pero el PR podría debilitar su propia revisión.
 - *Por qué*: prompts más cortos y enfocados (importante con un modelo chico como `gpt-4.1-mini`), conocimiento editable sin tocar Python, reglas propias por repo y la posibilidad de medir qué skill aporta hallazgos.
 
+### 14. Ajustes tras la primera prueba real (gpt-4.1-mini)
+Se ejecutó el revisor en local sobre una rama del repo NestJS con 8 errores sembrados (tarea `#buscar-usuarios`). Resultado: detectó 4 claramente (inyección SQL, falta de 400, falta de límite de 20, falta del caso de uso) y 1 parcialmente (controller que usa el repositorio, como `minor`). No detectó la afirmación falsa del commit ("incluye tests"), y el resumen del agente funcional incluso la repitió. Además, el mismo problema apareció hasta 3 veces, reportado por agentes distintos con títulos distintos. Costo: unos 20 000 tokens de entrada y 2 000 de salida.
+
+Ajustes:
+- *Duplicados entre agentes*: además de la huella exacta, se unen hallazgos de agentes **distintos** en el mismo archivo, a ≤ 3 líneas, con títulos similares (coeficiente de solapamiento ≥ 0,5 sobre raíces de 5 letras, sin acentos ni palabras vacías). Calibrado con los hallazgos reales: los duplicados dieron 0,60–0,75 y los problemas distintos ≤ 0,34. Los hallazgos del mismo agente nunca se unen por similitud. Resultado sobre la prueba: 9 → 5 hallazgos.
+- *Especialización*: cada rol dice explícitamente qué no le toca reportar, y una regla común lo refuerza.
+- *Afirmaciones*: la skill `scope-and-claims` exige listar cada afirmación de la descripción y buscar su evidencia en el diff. Una regla común prohíbe que el `summary` contradiga los hallazgos o repita afirmaciones no verificadas.
+- *Capas*: la skill `hexagonal-layers` nombra explícitamente el controller que inyecta un repositorio (`major`) y la lógica de negocio (filtrado, orden, límites, normalización) en el controller.
+- *No se agrega* una detección determinista de "PR sin tests": la cobertura ya la exige el pipeline del repo objetivo antes de la revisión (`test:cov` con umbral del 80 % y el Quality Gate de Sonar). El agente funcional sigue señalando los criterios de la tarea sin un test específico (`missing-test`, `minor`).
+- *Alternativa descartada para los duplicados*: unir solo por archivo y línea cercana, que habría mezclado los tres problemas distintos que el agente funcional reportó en la misma línea.
+
 ## Risks / Trade-offs
 
 - [Falsos positivos que frenan PRs] → Solo bloquea `critical` con confianza `high`, el umbral es configurable y existe `fail_on: none` para empezar en modo solo-comentarios.

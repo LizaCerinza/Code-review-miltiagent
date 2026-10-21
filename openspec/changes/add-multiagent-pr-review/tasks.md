@@ -67,6 +67,14 @@
 - [x] 10.4 Incluir las skills seleccionadas en el prompt de cada agente y registrar sus nombres en `AgentReport`, el resumen y el reporte JSON, y verificar con tests de agentes y de reporte
 - [x] 10.5 Agregar la opción `skills_dir` (CLI, `REVIEWER_SKILLS_DIR`, entrada `skills-dir` de la Action), documentar el formato y la carpeta `.review-skills/` en README y `docs/DEPLOYMENT.md`, agregar `examples/review-skill-template.md`, y verificar que `ruff check .` y `pytest` pasan
 
+## 11. Ajustes tras la primera prueba real
+
+- [x] 11.1 Normalizar el endpoint de Azure OpenAI (quitar rutas como `/openai/v1/` que el portal muestra y que duplicaban la URL, causando 404) y verificar con `tests/test_llm.py`
+- [x] 11.2 Unir duplicados entre agentes distintos (mismo archivo, ≤ 3 líneas, títulos similares ≥ 0,5) y verificar con `tests/test_aggregator.py` usando los títulos reales de la prueba (9 → 5 hallazgos)
+- [x] 11.3 Agregar a los roles y a las reglas comunes la especialización por área y la coherencia del `summary` con los hallazgos, y verificar que `pytest` pasa
+- [x] 11.4 Reforzar las skills `scope-and-claims` (verificar cada afirmación contra el diff), `acceptance-criteria` (la descripción no es prueba) y `hexagonal-layers` (controller que inyecta un repositorio = `major`), y verificar que todas las skills incluidas siguen siendo válidas
+- [ ] 11.5 Repetir la prueba local sobre la rama `prueba/revisor` y comparar contra los 8 errores sembrados (esperado: se detecta la afirmación falsa del commit, el controller que usa el repositorio queda como `major` y no hay duplicados entre agentes)
+
 ## Workflow follow-up
 
 - Una vez validado, publicar `v1.0.0`, cambiar el repo objetivo a `@v1` con `fail-on: critical` y agregar el check a la protección de rama.

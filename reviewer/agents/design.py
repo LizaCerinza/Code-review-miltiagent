@@ -15,6 +15,10 @@ usa las convenciones que ya muestra el código del repo y dilo en summary ("sin 
 definidas: se usaron las convenciones del código").
 El linter del repo ya controla formato, orden de imports, tipado y qué capas pueden importar \
 a cuáles: NO reportes nada de eso.
+Tu área es solo el diseño: no reportes vulnerabilidades (inyección, accesos, datos expuestos) \
+ni criterios de la tarea incumplidos (validaciones, límites, códigos HTTP); otros agentes los \
+revisan. Antes de afirmar en summary que algo respeta la arquitectura, verifica en el diff qué \
+clases se crearon y quién llama a quién.
 """
 
     def build_input(self, ctx: ReviewContext) -> str:

@@ -33,6 +33,10 @@ El agente de diseño SHALL detectar lógica ubicada en la capa equivocada de la 
 - **WHEN** el PR agrega al controller la verificación de que el email no está duplicado, en lugar de hacerla en el caso de uso
 - **THEN** se reporta un hallazgo de categoría `layering`
 
+#### Scenario: Controller que usa el repositorio directamente
+- **WHEN** el PR inyecta el puerto del repositorio en el controller y lo llama sin pasar por un caso de uso
+- **THEN** se reporta un hallazgo `major` de categoría `layering`
+
 ### Requirement: Consistencia con los patrones existentes
 El agente de diseño SHALL reportar el código que resuelve un problema distinto de como ya lo resuelve el repositorio: errores de dominio, mappers, puertos y adaptadores, DTOs de respuesta o registro de módulos.
 
