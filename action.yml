@@ -169,8 +169,15 @@ runs:
           fi
         fi
         if ! docker pull --quiet "$IMAGE"; then
-          echo "::error::No se pudo descargar $IMAGE. Si el paquete de GHCR es privado: en el paquete, Package settings > Manage Actions access, agrega este repositorio con rol Read, y en el job agrega 'permissions: packages: read'. Si no, haz público el paquete (ver docs/DEPLOYMENT.md)."
-          exit 2
+          # Sin acceso a la imagen (por ejemplo, un paquete privado de una cuenta personal, que no
+          # ofrece "Manage Actions access"): se construye desde el código de la Action, que ya está
+          # en GITHUB_ACTION_PATH en la misma versión. Tarda más y no es la imagen escaneada.
+          echo "::warning::No se pudo descargar $IMAGE; se construye la imagen desde el código de la Action. Tarda 1-2 minutos más. Para usar la imagen publicada, haz público el paquete o dale acceso a este repo (ver docs/DEPLOYMENT.md)."
+          IMAGE="code-review-multiagent:local"
+          if ! docker build --quiet --tag "$IMAGE" "$GITHUB_ACTION_PATH" > /dev/null; then
+            echo "::error::Tampoco se pudo construir la imagen desde el código de la Action."
+            exit 2
+          fi
         fi
         out="$RUNNER_TEMP/ai-review"
         mkdir -p "$out"
