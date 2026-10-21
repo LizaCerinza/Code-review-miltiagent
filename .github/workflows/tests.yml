@@ -1,0 +1,60 @@
+name: Tests
+
+# Reutilizable: lo llaman ci.yml y release.yml para que ambos validen exactamente lo mismo.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint y tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Tests
+        run: pytest
+
+      - name: Tests de resolve-image.sh
+        run: bash scripts/test-resolve-image.sh
+
+  image:
+    name: Build y smoke test de la imagen
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: code-review-multiagent:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: |
+          docker run --rm code-review-multiagent:test --help
+          uid="$(docker run --rm --entrypoint id code-review-multiagent:test -u)"
+          if [ "$uid" = "0" ]; then
+            echo "::error::La imagen corre como root"
+            exit 1
+          fi

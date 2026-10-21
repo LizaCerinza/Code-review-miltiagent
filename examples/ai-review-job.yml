@@ -1,0 +1,42 @@
+# Job para agregar en .github/workflows/ci.yml del repo objetivo (por ejemplo, el repo NestJS).
+# Va dentro de `jobs:`, al mismo nivel que el job `quality`.
+
+  ai-review:
+    name: AI review (multiagente)
+    if: github.event_name == 'pull_request'
+    # Después de `quality`, para que Sonar ya haya publicado sus issues del PR.
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # head.sha: los números de línea del checkout coinciden con el diff que muestra GitHub.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Code review multiagente
+        id: review
+        uses: LizaCerinza/Code-review-miltiagent@v0
+        with:
+          # Azure OpenAI (por defecto). `model` es el nombre del deployment en tu recurso.
+          azure-openai-api-key: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          azure-openai-endpoint: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          model: gpt-4.1-mini
+          # Alternativa con Claude:
+          # provider: anthropic
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          # Empezar comentando sin bloquear; pasar a `critical` cuando el equipo confíe en el revisor.
+          fail-on: none
+
+      - name: Subir reporte
+        if: always() && steps.review.outputs.report-path != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-review-report
+          path: ${{ steps.review.outputs.report-path }}
+          if-no-files-found: ignore

@@ -1,0 +1,187 @@
+name: Code review multiagente
+description: >-
+  Revisa un pull request con tres agentes de IA (funcional, seguridad y diseño) orquestados
+  con LangGraph y publica el resultado en el PR. Usa Azure OpenAI (gpt-4.1-mini) por defecto
+  o Claude. Ejecuta la imagen Docker publicada de la misma versión que la Action.
+author: LizaCerinza
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  provider:
+    description: Proveedor de modelos, azure o anthropic.
+    required: false
+    default: azure
+  azure-openai-api-key:
+    description: API key del recurso de Azure OpenAI (obligatoria con provider azure). Si llega vacía, por ejemplo en un PR desde un fork, la revisión se omite.
+    required: false
+    default: ""
+  azure-openai-endpoint:
+    description: Endpoint del recurso de Azure OpenAI, por ejemplo https://mi-recurso.openai.azure.com (obligatorio con provider azure).
+    required: false
+    default: ""
+  azure-openai-api-version:
+    description: Versión de la API de Azure OpenAI.
+    required: false
+    default: "2024-10-21"
+  anthropic-api-key:
+    description: API key de Anthropic (obligatoria con provider anthropic).
+    required: false
+    default: ""
+  github-token:
+    description: Token para leer el PR y comentar en él. Necesita pull-requests write.
+    required: false
+    default: ${{ github.token }}
+  sonar-token:
+    description: Token de Sonar, para que el agente de seguridad no repita sus issues.
+    required: false
+    default: ""
+  sonar-host-url:
+    description: URL del servidor de Sonar.
+    required: false
+    default: https://sonarcloud.io
+  fail-on:
+    description: Severidad mínima que bloquea el merge (critical, major, minor, info o none).
+    required: false
+    default: critical
+  fail-on-agent-error:
+    description: Si es "true", el paso falla cuando algún agente no termina.
+    required: false
+    default: "false"
+  model:
+    description: Modelo para los tres agentes; en Azure, el nombre del deployment. Vacío = gpt-4.1-mini (azure) o claude-opus-5-5 (anthropic).
+    required: false
+    default: ""
+  model-functional:
+    description: Modelo o deployment solo para el agente funcional (por ejemplo gpt-5-mini). Vacío = `model`.
+    required: false
+    default: ""
+  model-security:
+    description: Modelo o deployment solo para el agente de seguridad. Vacío = `model`.
+    required: false
+    default: ""
+  model-design:
+    description: Modelo o deployment solo para el agente de diseño. Vacío = `model`.
+    required: false
+    default: ""
+  azure-reasoning-effort:
+    description: Esfuerzo de razonamiento para deployments gpt-5* u o-series (minimal, low, medium, high).
+    required: false
+    default: medium
+  agent-timeout:
+    description: Tiempo máximo por agente, en segundos.
+    required: false
+    default: "600"
+  tasks-dir:
+    description: Carpeta con las tareas en Markdown referenciadas por hashtag.
+    required: false
+    default: docs/tasks
+  spec-globs:
+    description: Globs de las especificaciones, separados por comas.
+    required: false
+    default: openspec/specs/**/*.md
+  guidelines-file:
+    description: Archivo con los estándares de diseño del repo.
+    required: false
+    default: REVIEW_GUIDELINES.md
+  skills-dir:
+    description: Carpeta con las skills de revisión propias del repo (se leen de la rama base del PR).
+    required: false
+    default: .review-skills
+  image:
+    description: Imagen a ejecutar. Vacío = la imagen publicada de la misma versión que la Action.
+    required: false
+    default: ""
+
+outputs:
+  report-path:
+    description: Ruta del reporte JSON de la revisión (vacía si la revisión se omitió).
+    value: ${{ steps.review.outputs.report-path }}
+
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      shell: bash
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        PROVIDER: ${{ inputs.provider }}
+        HAS_AZURE_CREDENTIALS: ${{ inputs.azure-openai-api-key != '' && inputs.azure-openai-endpoint != '' }}
+        HAS_ANTHROPIC_CREDENTIALS: ${{ inputs.anthropic-api-key != '' }}
+        ACTION_REF: ${{ github.action_ref }}
+        ACTION_REPOSITORY: ${{ github.action_repository }}
+        IMAGE_OVERRIDE: ${{ inputs.image }}
+      run: |
+        if [[ "$EVENT_NAME" != "pull_request" ]]; then
+          echo "::notice::Code review multiagente: el evento '$EVENT_NAME' no es un pull request; no hay nada que revisar."
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [[ "$PROVIDER" == "anthropic" ]]; then has_credentials="$HAS_ANTHROPIC_CREDENTIALS"; else has_credentials="$HAS_AZURE_CREDENTIALS"; fi
+        if [[ "$has_credentials" != "true" ]]; then
+          msg="Code review multiagente omitido: las credenciales del proveedor '$PROVIDER' no están disponibles (es normal en PRs desde forks, que no reciben secrets)."
+          echo "::notice::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        image="$(bash "$GITHUB_ACTION_PATH/scripts/resolve-image.sh" "$ACTION_REF" "$IMAGE_OVERRIDE" "ghcr.io/${ACTION_REPOSITORY,,}")" || {
+          echo "::error::No hay una imagen publicada para '@$ACTION_REF'. Usa un tag de versión (@v1), @main o la entrada 'image'."
+          exit 2
+        }
+        echo "image=$image" >> "$GITHUB_OUTPUT"
+        echo "skip=false" >> "$GITHUB_OUTPUT"
+
+    - id: review
+      if: steps.prepare.outputs.skip != 'true'
+      shell: bash
+      env:
+        IMAGE: ${{ steps.prepare.outputs.image }}
+        REVIEWER_PROVIDER: ${{ inputs.provider }}
+        AZURE_OPENAI_API_KEY: ${{ inputs.azure-openai-api-key }}
+        AZURE_OPENAI_ENDPOINT: ${{ inputs.azure-openai-endpoint }}
+        AZURE_OPENAI_API_VERSION: ${{ inputs.azure-openai-api-version }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+        SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+        REVIEWER_PR_NUMBER: ${{ github.event.pull_request.number }}
+        REVIEWER_FAIL_ON: ${{ inputs.fail-on }}
+        REVIEWER_FAIL_ON_AGENT_ERROR: ${{ inputs.fail-on-agent-error }}
+        REVIEWER_MODEL: ${{ inputs.model }}
+        REVIEWER_MODEL_FUNCTIONAL: ${{ inputs.model-functional }}
+        REVIEWER_MODEL_SECURITY: ${{ inputs.model-security }}
+        REVIEWER_MODEL_DESIGN: ${{ inputs.model-design }}
+        REVIEWER_AZURE_REASONING_EFFORT: ${{ inputs.azure-reasoning-effort }}
+        REVIEWER_AGENT_TIMEOUT: ${{ inputs.agent-timeout }}
+        REVIEWER_TASKS_DIR: ${{ inputs.tasks-dir }}
+        REVIEWER_SPEC_GLOBS: ${{ inputs.spec-globs }}
+        REVIEWER_GUIDELINES_FILE: ${{ inputs.guidelines-file }}
+        REVIEWER_SKILLS_DIR: ${{ inputs.skills-dir }}
+      run: |
+        if ! docker pull --quiet "$IMAGE"; then
+          echo "::error::No se pudo descargar $IMAGE. Si el paquete de GHCR es privado, hazlo público (ver docs/DEPLOYMENT.md)."
+          exit 2
+        fi
+        out="$RUNNER_TEMP/ai-review"
+        mkdir -p "$out"
+        echo "report-path=$out/ai-review.json" >> "$GITHUB_OUTPUT"
+        # --user: el contenedor corre con el usuario del runner (no root) para poder
+        # escribir en el directorio de salida y en el resumen del job.
+        docker run --rm \
+          --user "$(id -u):$(id -g)" \
+          -e HOME=/tmp \
+          -v "$GITHUB_WORKSPACE:/workspace:ro" \
+          -v "$out:/output" \
+          -v "$GITHUB_STEP_SUMMARY:/github/step_summary" \
+          -e GITHUB_STEP_SUMMARY=/github/step_summary \
+          -e REVIEWER_OUTPUT_DIR=/output \
+          -e GITHUB_REPOSITORY -e GITHUB_API_URL \
+          -e REVIEWER_PROVIDER -e AZURE_OPENAI_API_KEY -e AZURE_OPENAI_ENDPOINT           -e AZURE_OPENAI_API_VERSION -e ANTHROPIC_API_KEY           -e LANGSMITH_TRACING -e LANGSMITH_API_KEY -e LANGSMITH_PROJECT           -e GITHUB_TOKEN -e SONAR_TOKEN -e SONAR_HOST_URL \
+          -e REVIEWER_PR_NUMBER -e REVIEWER_FAIL_ON -e REVIEWER_FAIL_ON_AGENT_ERROR \
+          -e REVIEWER_MODEL -e REVIEWER_MODEL_FUNCTIONAL -e REVIEWER_MODEL_SECURITY \
+          -e REVIEWER_MODEL_DESIGN -e REVIEWER_AZURE_REASONING_EFFORT \
+          -e REVIEWER_AGENT_TIMEOUT -e REVIEWER_TASKS_DIR \
+          -e REVIEWER_SPEC_GLOBS -e REVIEWER_GUIDELINES_FILE -e REVIEWER_SKILLS_DIR \
+          "$IMAGE" --workspace /workspace
