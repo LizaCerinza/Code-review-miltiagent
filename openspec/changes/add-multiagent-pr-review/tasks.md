@@ -82,6 +82,11 @@
 - [x] 11.11 Descartar los hallazgos que solo confirman que algo se cumple (regla común y filtro por categoría en el agregador) y verificar con `tests/test_aggregator.py`
 - [x] 11.12 Cuarta prueba local con la combinación recomendada (funcional `gpt-5-mini`, seguridad y diseño `gpt-4.1-mini`) y comprobar que las líneas de seguridad y diseño coinciden con el código (52 y 66) y que no aparecen hallazgos positivos (resultado: 8 de 8, líneas correctas, sin repetidos ni positivos, ~2,2 centavos; ver decisión 14)
 
+## 12. Uso privado
+
+- [x] 12.1 Iniciar sesión en `ghcr.io` con el token del workflow (por stdin) antes de descargar la imagen, con un mensaje de error que indique qué acceso falta, y verificar con `tests/test_action.py`
+- [x] 12.2 Documentar el uso sin hacer nada público (acceso a la Action, acceso al paquete y `packages: read`) en `docs/DEPLOYMENT.md` y en el job de ejemplo
+
 ## Workflow follow-up
 
 - Una vez validado, publicar `v1.0.0`, cambiar el repo objetivo a `@v1` con `fail-on: critical` y agregar el check a la protección de rama.

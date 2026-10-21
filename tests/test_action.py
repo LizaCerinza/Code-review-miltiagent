@@ -55,3 +55,13 @@ def test_docker_run_forwards_every_reviewer_variable():
     for name in review["env"]:
         if name != "IMAGE":
             assert f"-e {name}" in review["run"], name
+
+
+def test_private_ghcr_login_uses_stdin_token():
+    """El token nunca debe pasar como argumento de línea de comandos (quedaría en los logs)."""
+    review = next(step for step in ACTION["runs"]["steps"] if step.get("id") == "review")
+    run = review["run"]
+    login = next(line for line in run.splitlines() if "docker login ghcr.io" in line)
+    assert "--password-stdin" in login
+    assert " -p " not in login and "--password " not in login
+    assert run.index("docker login") < run.index("docker pull")
