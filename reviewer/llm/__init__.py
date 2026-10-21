@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from urllib.parse import urlsplit
 
 from ..config import ReviewConfig
 from .base import LLMError, LLMProvider, LLMResponse
@@ -25,6 +26,18 @@ def missing_credentials(provider: str, env: Mapping[str, str]) -> list[str]:
     return [name for name in REQUIRED_CREDENTIALS[provider] if not env.get(name, "").strip()]
 
 
+def normalize_azure_endpoint(endpoint: str) -> str:
+    """Deja solo `https://<recurso>.<dominio>/`.
+
+    El portal de Azure AI Foundry muestra el endpoint con rutas como `/openai/v1/`, y el SDK
+    agrega `/openai/deployments/...` por su cuenta: con la ruta incluida, la URL se duplica (404).
+    """
+    parts = urlsplit(endpoint.strip())
+    if not parts.scheme or not parts.netloc:
+        return endpoint.strip()
+    return f"{parts.scheme}://{parts.netloc}/"
+
+
 def create_provider(config: ReviewConfig, env: Mapping[str, str]) -> LLMProvider:
     if config.provider == "anthropic":
         from .anthropic import AnthropicProvider
@@ -33,10 +46,11 @@ def create_provider(config: ReviewConfig, env: Mapping[str, str]) -> LLMProvider
     from .azure import AzureOpenAIProvider
 
     return AzureOpenAIProvider(
-        endpoint=env.get("AZURE_OPENAI_ENDPOINT", ""),
+        endpoint=normalize_azure_endpoint(env.get("AZURE_OPENAI_ENDPOINT", "")),
         api_key=env.get("AZURE_OPENAI_API_KEY", ""),
         api_version=config.azure_api_version,
     )
 
 
-__all__ = ["LLMError", "LLMProvider", "LLMResponse", "create_provider", "missing_credentials"]
+__all__ = ["LLMError", "LLMProvider", "LLMResponse", "create_provider", "missing_credentials",
+           "normalize_azure_endpoint"]

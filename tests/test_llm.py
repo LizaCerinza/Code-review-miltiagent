@@ -7,7 +7,12 @@ import pytest
 
 from reviewer.agents.base import REPORT_SCHEMA
 from reviewer.config import ReviewConfig
-from reviewer.llm import LLMError, create_provider, missing_credentials
+from reviewer.llm import (
+    LLMError,
+    create_provider,
+    missing_credentials,
+    normalize_azure_endpoint,
+)
 from reviewer.llm.anthropic import FALLBACK_BETA, AnthropicProvider
 from reviewer.llm.azure import AzureOpenAIProvider
 
@@ -141,6 +146,19 @@ def test_missing_credentials_per_provider():
     assert missing_credentials("azure", env) == []
     assert missing_credentials("anthropic", env) == ["ANTHROPIC_API_KEY"]
     assert missing_credentials("anthropic", {"ANTHROPIC_AUTH_TOKEN": "t"}) == []
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "https://topicos-avanzados.openai.azure.com/",
+        "https://topicos-avanzados.openai.azure.com",
+        "https://topicos-avanzados.openai.azure.com/openai/v1/",
+        "  https://topicos-avanzados.openai.azure.com/openai/  ",
+    ],
+)
+def test_normalize_azure_endpoint(endpoint):
+    assert normalize_azure_endpoint(endpoint) == "https://topicos-avanzados.openai.azure.com/"
 
 
 def test_create_provider():
