@@ -80,7 +80,7 @@
 - [x] 11.9 Tercera prueba local con `REVIEWER_MODEL_FUNCTIONAL=gpt-5-mini` sobre la misma rama y comparar contra las dos anteriores (resultado: 7 de 8, se detecta la afirmación falsa, ~2,2 centavos; ver decisión 14)
 - [x] 11.10 Numerar el diff y los archivos con la línea real de la versión nueva, pedir a los agentes que copien ese número y quitar los números de la evidencia, y verificar con `tests/test_diff.py`, `tests/test_context.py` y `tests/test_agent_base.py`
 - [x] 11.11 Descartar los hallazgos que solo confirman que algo se cumple (regla común y filtro por categoría en el agregador) y verificar con `tests/test_aggregator.py`
-- [ ] 11.12 Cuarta prueba local con la combinación recomendada (funcional `gpt-5-mini`, seguridad y diseño `gpt-4.1-mini`) y comprobar que las líneas de seguridad y diseño coinciden con el código (52 y 66) y que no aparecen hallazgos positivos
+- [x] 11.12 Cuarta prueba local con la combinación recomendada (funcional `gpt-5-mini`, seguridad y diseño `gpt-4.1-mini`) y comprobar que las líneas de seguridad y diseño coinciden con el código (52 y 66) y que no aparecen hallazgos positivos (resultado: 8 de 8, líneas correctas, sin repetidos ni positivos, ~2,2 centavos; ver decisión 14)
 
 ## Workflow follow-up
 

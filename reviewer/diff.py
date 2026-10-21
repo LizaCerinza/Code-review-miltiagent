@@ -80,7 +80,8 @@ def number_lines(text: str) -> str:
 
 def strip_line_numbers(text: str) -> str:
     """Quita los prefijos `  52 | ` que un modelo copie dentro de la evidencia."""
-    lines = [line for line in text.splitlines() if line.strip()]
+    # Las líneas "..." que un modelo usa para saltar código no llevan número.
+    lines = [line for line in text.splitlines() if line.strip() not in ("", "...", "…")]
     matches = [_LINE_NUMBER_PREFIX_RE.match(line) for line in lines]
     if not lines or not all(matches) or not any(m.group(1) for m in matches if m):
         return text

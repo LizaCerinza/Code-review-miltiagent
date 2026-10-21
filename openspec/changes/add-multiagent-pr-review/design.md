@@ -144,6 +144,15 @@ Ajustes:
 - *Diff y archivos numerados*: cada línea lleva su número real de la versión nueva (`  52 | código`, las eliminadas sin número), y la regla común pide copiar ese número en lugar de calcularlo. Los números se quitan de la evidencia al parsear la respuesta.
 - *Sin hallazgos positivos*: una regla común ("un hallazgo es siempre un problema") y un filtro en el agregador que descarta las categorías que solo confirman algo (`cumple*`, `ok`, `pass`, `compliant`...).
 
+**Cuarta prueba (combinación recomendada con todos los ajustes):** detectó los 8 errores sembrados. `gpt-4.1-mini` reportó las líneas correctas (inyección SQL en la 52, controller en la 66 y la 68), y gracias a eso la unión de duplicados funcionó entre los tres agentes: 9 hallazgos, sin repetidos. La afirmación falsa se reportó completa (validación, límite y tests), y la lógica ubicada en el controller apareció como hallazgo propio. No hubo hallazgos positivos. Costo: unos 2,2 centavos de dólar (funcional $0,0125, diseño $0,0056, seguridad $0,0035). Ruido residual aceptable: el agente de diseño todavía comenta criterios funcionales, aunque quedan unidos a los del funcional, y publicó un `minor` sobre el repositorio en memoria. Un fragmento de evidencia con `...` conservaba los números de línea; se corrigió.
+
+| Prueba | Configuración | Detectados | Hallazgos publicados | Costo aprox. |
+|---|---|---|---|---|
+| 1 | todo `gpt-4.1-mini` | 4/8 | 9 (con repetidos) | $0,011 |
+| 2 | + especialización, skills reforzadas, duplicados por título | 6/8 | 8 | $0,011 |
+| 3 | + funcional `gpt-5-mini`, duplicados por evidencia | 7/8 | 11 | $0,022 |
+| 4 | + diff numerado, sin positivos | 8/8 | 9 | $0,022 |
+
 ## Risks / Trade-offs
 
 - [Falsos positivos que frenan PRs] → Solo bloquea `critical` con confianza `high`, el umbral es configurable y existe `fail_on: none` para empezar en modo solo-comentarios.

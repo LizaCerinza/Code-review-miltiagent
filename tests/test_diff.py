@@ -101,3 +101,14 @@ def test_number_lines_and_strip_round_trip():
 
 def test_strip_keeps_code_without_numbers():
     assert strip_line_numbers("const b = a || 2;\n| tabla |") == "const b = a || 2;\n| tabla |"
+
+
+def test_strip_ignores_ellipsis_lines():
+    """Evidencia real de gpt-5-mini en la cuarta prueba: dos fragmentos separados por '...'."""
+    evidence = (" 47 |     @Inject(USER_REPOSITORY) private readonly users: UserRepositoryPort,\n"
+                "...\n"
+                " 68 |     const found = await this.users.searchByName(term);")
+    assert strip_line_numbers(evidence) == (
+        "    @Inject(USER_REPOSITORY) private readonly users: UserRepositoryPort,\n"
+        "...\n"
+        "    const found = await this.users.searchByName(term);")
