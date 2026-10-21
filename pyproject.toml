@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "code-review-multiagent"
+version = "0.1.0"
+description = "Code review multiagente para pull requests: agentes funcional, de seguridad y de diseño"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "anthropic>=1.17",
+  "openai>=3.35",
+  "langgraph>=1.2",
+  "httpx>=0.27",
+  "pydantic>=2.7",
+  "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "pyyaml>=6",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+code-review-agent = "reviewer.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["reviewer*"]
+
+# Skills incluidas: viajan dentro del wheel (y por lo tanto de la imagen Docker).
+[tool.setuptools.package-data]
+reviewer = ["skills/library/**/*.md"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
