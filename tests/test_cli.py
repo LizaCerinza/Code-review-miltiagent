@@ -1,16 +1,12 @@
 import json
-import subprocess
 
 import pytest
+from conftest import git
 
 import reviewer.__main__ as cli
 from reviewer.models import AgentReport, Finding, ReviewResult
 
 AZURE = {"AZURE_OPENAI_API_KEY": "k", "AZURE_OPENAI_ENDPOINT": "https://r.openai.azure.com"}
-
-
-def git(cwd, *args):
-    subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True)
 
 
 @pytest.fixture

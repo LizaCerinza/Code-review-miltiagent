@@ -1,8 +1,8 @@
 import base64
-import subprocess
 
 import httpx
 import pytest
+from conftest import git
 
 from reviewer.agents import SecurityAgent, default_agents
 from reviewer.config import ReviewConfig
@@ -139,10 +139,6 @@ def test_skills_from_github_error_returns_note():
     gh = GitHubClient("t", "o/r", transport=httpx.MockTransport(lambda r: httpx.Response(500)))
     files, notes = skills_from_github(gh, "base123", ".review-skills")
     assert files == {} and "No se pudieron leer" in notes[0]
-
-
-def git(cwd, *args):
-    subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True)
 
 
 def test_skills_from_git_uses_base_not_pr_version(tmp_path):
