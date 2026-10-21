@@ -21,13 +21,25 @@ Requisitos: que el workflow `CI` esté en verde en `main`.
    git push origin v0.1.0
    ```
 2. En **Actions → Release**, espera a que termine. El workflow corre los tests, construye la imagen, la escanea con Trivy y publica `ghcr.io/lizacerinza/code-review-miltiagent` con los tags `0.1.0`, `0.1` y `0`. También mueve el tag de git `v0` y crea el GitHub Release.
-3. **Haz público el paquete (una sola vez).** GHCR crea los paquetes como privados, y un repo de otra cuenta no puede descargarlos. Ve a tu perfil → **Packages** → `code-review-miltiagent` → **Package settings** → **Change visibility** → **Public**.
+3. **Da acceso al paquete (una sola vez).** GHCR crea los paquetes como privados. Hay dos opciones:
+   - **Público** (lo más simple): tu perfil → **Packages** → `code-review-miltiagent` → **Package settings** → **Change visibility** → **Public**. Cualquier repo puede usarlo.
+   - **Privado**: ver [1b. Uso sin hacer nada público](#1b-uso-sin-hacer-nada-público).
 4. Comprueba que se puede descargar sin autenticación:
    ```bash
    docker pull ghcr.io/lizacerinza/code-review-miltiagent:0
    ```
 
 Cada versión nueva repite los pasos 1 y 2. El tag `X.Y.Z` nunca se sobrescribe: si el release falla a medias, publica un tag nuevo (`v0.1.1`).
+
+## 1b. Uso sin hacer nada público
+
+El repo del revisor y su paquete pueden quedar privados. GitHub lo permite solo para **repos objetivo privados de la misma cuenta**: un fork de un repo público no sirve, porque no puede ser privado.
+
+1. **Acceso a la Action.** En el repo del revisor: **Settings → Actions → General → Access** → **Accessible from repositories owned by the user** → **Save**.
+2. **Acceso a la imagen.** En el paquete (`https://github.com/users/<usuario>/packages/container/package/code-review-miltiagent`): **Package settings → Manage Actions access → Add repository** → el repo objetivo con rol **Read**.
+3. **Permiso en el job.** El job del repo objetivo declara `packages: read` (ya está en [`examples/ai-review-job.yml`](../examples/ai-review-job.yml)). La Action inicia sesión en `ghcr.io` con el token del workflow antes de descargar la imagen.
+
+Si falta alguno de los tres, el paso falla con un mensaje que indica qué acceso agregar.
 
 ## 2. Instalar el revisor en un repo objetivo
 

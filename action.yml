@@ -160,8 +160,16 @@ runs:
         REVIEWER_GUIDELINES_FILE: ${{ inputs.guidelines-file }}
         REVIEWER_SKILLS_DIR: ${{ inputs.skills-dir }}
       run: |
+        # Paquete privado en GHCR: se autentica con el token del workflow (requiere que el
+        # repo tenga acceso de lectura al paquete y `packages: read` en el job). El token va
+        # por stdin, nunca como argumento. Con un paquete público el login no hace falta.
+        if [[ "$IMAGE" == ghcr.io/* ]]; then
+          if ! printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin > /dev/null 2>&1; then
+            echo "::warning::No se pudo iniciar sesión en ghcr.io; se intentará descargar la imagen sin autenticación."
+          fi
+        fi
         if ! docker pull --quiet "$IMAGE"; then
-          echo "::error::No se pudo descargar $IMAGE. Si el paquete de GHCR es privado, hazlo público (ver docs/DEPLOYMENT.md)."
+          echo "::error::No se pudo descargar $IMAGE. Si el paquete de GHCR es privado: en el paquete, Package settings > Manage Actions access, agrega este repositorio con rol Read, y en el job agrega 'permissions: packages: read'. Si no, haz público el paquete (ver docs/DEPLOYMENT.md)."
           exit 2
         fi
         out="$RUNNER_TEMP/ai-review"

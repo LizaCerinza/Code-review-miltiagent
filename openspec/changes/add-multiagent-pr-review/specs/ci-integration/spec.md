@@ -50,6 +50,17 @@ La Action SHALL funcionar con los permisos `contents: read` y `pull-requests: wr
 - **WHEN** el job declara solo `contents: read` y `pull-requests: write`
 - **THEN** la revisión se publica sin errores de permisos
 
+### Requirement: Imagen y Action privadas
+El revisor SHALL poder usarse sin hacer públicos su repositorio ni su paquete en GHCR. Para descargar una imagen de `ghcr.io`, la Action MUST autenticarse con el token del workflow, pasado por entrada estándar y nunca como argumento. Si la descarga falla, MUST indicar qué acceso falta.
+
+#### Scenario: Paquete privado con acceso concedido
+- **WHEN** el paquete es privado, el repo objetivo tiene acceso de lectura en el paquete y el job declara `packages: read`
+- **THEN** la Action descarga la imagen y ejecuta la revisión
+
+#### Scenario: Paquete privado sin acceso
+- **WHEN** el paquete es privado y el repo objetivo no tiene acceso de lectura
+- **THEN** el paso falla con un mensaje que explica cómo dar el acceso o hacer público el paquete
+
 ### Requirement: Resultado visible en el job
 La Action SHALL escribir el resumen de la revisión en el resumen del job de GitHub Actions y dejar el reporte JSON disponible para subirlo como artefacto. El estado del paso SHALL reflejar el código de salida del revisor.
 
