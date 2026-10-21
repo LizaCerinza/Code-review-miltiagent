@@ -136,6 +136,14 @@ Ajustes:
 - *Modelos de razonamiento en Azure*: un deployment cuyo nombre empieza con `gpt-5`, `o1`, `o3` u `o4` (o que se declara en `REVIEWER_AZURE_REASONING_MODELS`) se invoca sin `temperature`, con `max_completion_tokens`, con `reasoning_effort` (por defecto `medium`) y con la versión de la API `2025-04-01-preview`, porque la versión GA `2024-10-21` no los soporta. Los demás deployments siguen igual.
 - *Modelo por agente en la Action*: entradas `model-functional`, `model-security` y `model-design`. Combinación recomendada por costo/beneficio: `gpt-5-mini` para el agente funcional (verificar afirmaciones exige razonar) y `gpt-4.1-mini` para seguridad y diseño, que ya rinden bien. Costo estimado: 1 a 2 centavos de dólar por PR.
 
+**Tercera prueba (agente funcional con `gpt-5-mini`, seguridad y diseño con `gpt-4.1-mini`):** detectó 7 de 8. Por primera vez apareció el hallazgo `unsupported-claim` por los tests que el commit afirma y no existen. El resumen funcional pasó a evaluar criterio por criterio, sin repetir la descripción, y encontró además un faltante no sembrado (documentar `q` en Swagger, que pedía la nota técnica). La inyección SQL de seguridad y diseño quedó unida por evidencia. Costo: unos 2,2 centavos (el agente funcional generó 6 462 tokens de salida por el razonamiento, contra unos 800 del mini). Quedaron dos problemas:
+- *Líneas incorrectas en `gpt-4.1-mini`*: en las tres pruebas reportó las líneas 49, 51 y 54 cuando el código estaba en la 52 y la 66; `gpt-5-mini` dio las correctas. Con líneas equivocadas, los comentarios inline caen mal o se descartan, y la unión de duplicados por cercanía falla.
+- *Hallazgos positivos*: `gpt-5-mini` publicó un `info` con categoría `cumple-evidence` para un criterio cumplido.
+
+Ajustes:
+- *Diff y archivos numerados*: cada línea lleva su número real de la versión nueva (`  52 | código`, las eliminadas sin número), y la regla común pide copiar ese número en lugar de calcularlo. Los números se quitan de la evidencia al parsear la respuesta.
+- *Sin hallazgos positivos*: una regla común ("un hallazgo es siempre un problema") y un filtro en el agregador que descarta las categorías que solo confirman algo (`cumple*`, `ok`, `pass`, `compliant`...).
+
 ## Risks / Trade-offs
 
 - [Falsos positivos que frenan PRs] → Solo bloquea `critical` con confianza `high`, el umbral es configurable y existe `fail_on: none` para empezar en modo solo-comentarios.

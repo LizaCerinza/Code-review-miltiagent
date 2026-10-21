@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .config import ReviewConfig
-from .diff import ChangedFile, split_unified_diff
+from .diff import ChangedFile, number_lines, number_patch, split_unified_diff
 from .skills import Skill, load_builtin_skills, merge_skills, parse_repo_skills
 from .tasks import TaskResolution, resolve_tasks
 
@@ -89,15 +89,19 @@ class ReviewContext:
         meta = f"Título: {self.title}\nDescripción:\n{self.description or '(sin descripción)'}"
         parts = [block("pull_request", meta)]
 
+        # Diff y archivos llevan el número de línea real a la izquierda (`  52 | `): los
+        # modelos chicos calculaban mal las líneas a partir de los encabezados `@@`.
         diff_parts = []
         for f in self.files:
             diff_parts.append(f"### {f.path} ({f.status})")
-            diff_parts.append(f"```diff\n{f.patch}\n```" if f.patch else "(sin diff textual)")
+            diff_parts.append(
+                f"```diff\n{number_patch(f.patch)}\n```" if f.patch else "(sin diff textual)"
+            )
         parts.append(block("diff", "\n".join(diff_parts) or "(el PR no tiene cambios revisables)"))
 
         if self.file_contents:
             contents = "\n".join(
-                block("archivo", content, f'path="{path}"')
+                block("archivo", number_lines(content), f'path="{path}"')
                 for path, content in self.file_contents.items()
             )
             parts.append(block("archivos", contents))

@@ -1,4 +1,10 @@
-from reviewer.diff import commentable_lines, split_unified_diff
+from reviewer.diff import (
+    commentable_lines,
+    number_lines,
+    number_patch,
+    split_unified_diff,
+    strip_line_numbers,
+)
 
 PATCH = """@@ -1,3 +1,4 @@
  linea1
@@ -69,3 +75,29 @@ rename to b.ts
 """
     files = split_unified_diff(diff)
     assert [(f.path, f.status) for f in files] == [("b.ts", "renamed")]
+
+
+def test_number_patch_marks_new_line_numbers():
+    numbered = number_patch(PATCH).splitlines()
+    assert numbered[0] == "@@ -1,3 +1,4 @@"
+    assert numbered[1] == "    1 |  linea1"
+    assert numbered[2] == "      | -vieja"
+    assert numbered[3] == "    2 | +nueva"
+    assert numbered[5] == "    4 |  linea3"
+    # Segundo hunk: empieza en la línea 21.
+    assert "   22 | +b" in numbered
+
+
+def test_numbers_match_commentable_lines():
+    numbered = {int(line.split("|")[0]) for line in number_patch(PATCH).splitlines()
+                if "|" in line and line.split("|")[0].strip()}
+    assert numbered == commentable_lines(PATCH)
+
+
+def test_number_lines_and_strip_round_trip():
+    code = "const a = 1;\n\nconst b = a || 2;"
+    assert strip_line_numbers(number_lines(code)) == code
+
+
+def test_strip_keeps_code_without_numbers():
+    assert strip_line_numbers("const b = a || 2;\n| tabla |") == "const b = a || 2;\n| tabla |"

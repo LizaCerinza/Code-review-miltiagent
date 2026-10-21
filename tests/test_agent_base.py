@@ -45,3 +45,10 @@ def test_schema_is_strict():
     assert item["additionalProperties"] is False
     assert set(item["required"]) == set(item["properties"])
     assert REPORT_SCHEMA["additionalProperties"] is False
+
+
+def test_parse_strips_line_numbers_from_evidence():
+    data = {"summary": "", "findings": [{**VALID["findings"][0],
+                                         "evidence": "   52 |   query(`x`)\n   53 | );"}]}
+    report = parse_report("security", response(json.dumps(data)))
+    assert report.findings[0].evidence == "  query(`x`)\n);"

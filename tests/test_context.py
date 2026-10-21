@@ -71,3 +71,10 @@ def test_block_neutralizes_closing_tags():
     assert text.count("</diff>") == 1
     assert text.endswith("</diff>")
     assert "<\\/diff>" in text
+
+
+def test_rendered_diff_and_files_carry_line_numbers(workspace):
+    ctx = build_context(workspace, ReviewConfig(), "T", "D", files())
+    rendered = ctx.render_pull_request()
+    assert "    1 | +export class A {}" in rendered          # diff numerado
+    assert "    1 | export class A {}" in rendered           # contenido del archivo numerado

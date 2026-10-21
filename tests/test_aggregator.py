@@ -145,3 +145,13 @@ def test_different_problems_quoting_the_same_method_are_kept():
     ])
     assert len(merged) == 2
     assert evidence_similarity(merged[0].evidence, merged[1].evidence) < 0.85
+
+
+def test_positive_findings_are_dropped():
+    """gpt-5-mini publicó un `info` con categoría `cumple-evidence` para un criterio cumplido."""
+    merged = consolidate([
+        f(severity="info", category="cumple-evidence", title="Búsqueda insensible a mayúsculas"),
+        f(severity="info", category="OK", title="Todo bien", line=20),
+        f(severity="minor", category="missing-test", title="Falta test", line=30),
+    ])
+    assert [x.category for x in merged] == ["missing-test"]

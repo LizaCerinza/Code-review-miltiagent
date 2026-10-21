@@ -34,6 +34,17 @@ def title_similarity(a: str, b: str) -> float:
     return len(ta & tb) / min(len(ta), len(tb))
 
 
+# Categorías con las que un modelo reporta algo que está bien (ruido: va en el summary).
+# En la tercera prueba, gpt-5-mini publicó un hallazgo `info` con categoría `cumple-evidence`.
+_POSITIVE_CATEGORIES = {"ok", "pass", "passed", "compliant", "criterion-met", "meets-criterion"}
+
+
+def is_positive(finding: Finding) -> bool:
+    """True si el "hallazgo" solo confirma que algo se cumple."""
+    category = finding.category.strip().lower()
+    return category.startswith("cumple") or category in _POSITIVE_CATEGORIES
+
+
 def _evidence_lines(evidence: str) -> set[str]:
     return {re.sub(r"\s+", " ", line).strip() for line in evidence.splitlines() if line.strip()}
 
@@ -68,14 +79,14 @@ def _merge(current: Finding, other: Finding) -> Finding:
 
 
 def consolidate(findings: list[Finding]) -> list[Finding]:
-    """Descarta hallazgos sin evidencia y une los duplicados.
+    """Descarta hallazgos sin evidencia o que solo confirman algo, y une los duplicados.
 
     1. Misma huella (archivo, línea y título normalizado), de cualquier agente.
     2. Mismo problema reportado por agentes distintos (ver `_same_problem`).
     """
     by_fingerprint: dict[str, Finding] = {}
     for finding in findings:
-        if not finding.evidence.strip():
+        if not finding.evidence.strip() or is_positive(finding):
             continue
         key = finding.fingerprint
         current = by_fingerprint.get(key)

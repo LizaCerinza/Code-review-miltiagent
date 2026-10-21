@@ -58,6 +58,17 @@ Cada hallazgo MUST incluir: archivo, línea (0 si es general), severidad (`criti
 - **WHEN** un agente devuelve un hallazgo con la evidencia vacía
 - **THEN** el hallazgo no se publica ni cuenta para el veredicto
 
+#### Scenario: "Hallazgo" que solo confirma que algo se cumple
+- **WHEN** un agente devuelve un hallazgo `info` con categoría `cumple-evidence` para un criterio que se cumple
+- **THEN** el hallazgo no se publica; lo que se cumple aparece solo en el resumen del agente
+
+### Requirement: Línea de los hallazgos
+Los agentes SHALL recibir el diff y los archivos con el número de línea real de la versión nueva junto a cada línea, de modo que la línea de cada hallazgo corresponda al código citado. Los números MUST NOT aparecer en la evidencia publicada.
+
+#### Scenario: Hallazgo en una línea del diff
+- **WHEN** un agente reporta un problema en la consulta que está en la línea 52 de la versión nueva
+- **THEN** el hallazgo indica la línea 52 y el comentario inline se publica en esa línea
+
 ### Requirement: Consolidación de hallazgos duplicados
 Cuando varios agentes reportan el mismo problema, el revisor SHALL publicar un solo hallazgo, que conserva la severidad más alta y lista a todos los agentes que lo reportaron. Es el mismo problema si coinciden archivo, línea y título normalizado, o si agentes distintos lo reportan en el mismo archivo, a pocas líneas de distancia y con títulos de significado equivalente o citando el mismo código como evidencia.
 

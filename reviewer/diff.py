@@ -36,6 +36,57 @@ def commentable_lines(patch: str) -> set[int]:
     return lines
 
 
+_NUMBER_WIDTH = 5
+_LINE_NUMBER_PREFIX_RE = re.compile(r"^ *(\d+)? \| ")
+
+
+def number_patch(patch: str) -> str:
+    """Anota cada línea del diff con su número en la versión nueva del archivo.
+
+    Los modelos chicos calculan mal las líneas a partir de los encabezados `@@`; con el
+    número a la vista, solo tienen que copiarlo. Las líneas eliminadas no tienen número.
+
+        @@ -1,2 +1,3 @@
+            1 |  linea de contexto
+            2 | +linea agregada
+              | -linea eliminada
+    """
+    out: list[str] = []
+    new_line: int | None = None
+    blank = " " * _NUMBER_WIDTH
+    for raw in patch.splitlines():
+        match = _HUNK_RE.match(raw)
+        if match:
+            new_line = int(match.group(1))
+            out.append(raw)
+            continue
+        if new_line is None or raw.startswith("\\"):
+            out.append(raw)
+            continue
+        if raw.startswith("-"):
+            out.append(f"{blank} | {raw}")
+            continue
+        out.append(f"{new_line:>{_NUMBER_WIDTH}} | {raw}")
+        new_line += 1
+    return "\n".join(out)
+
+
+def number_lines(text: str) -> str:
+    """Contenido completo de un archivo con números de línea."""
+    return "\n".join(
+        f"{n:>{_NUMBER_WIDTH}} | {line}" for n, line in enumerate(text.splitlines(), start=1)
+    )
+
+
+def strip_line_numbers(text: str) -> str:
+    """Quita los prefijos `  52 | ` que un modelo copie dentro de la evidencia."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    matches = [_LINE_NUMBER_PREFIX_RE.match(line) for line in lines]
+    if not lines or not all(matches) or not any(m.group(1) for m in matches if m):
+        return text
+    return "\n".join(_LINE_NUMBER_PREFIX_RE.sub("", line, count=1) for line in text.splitlines())
+
+
 def split_unified_diff(diff: str) -> list[ChangedFile]:
     """Divide la salida de `git diff` en un ChangedFile por archivo."""
     files: list[ChangedFile] = []
