@@ -85,6 +85,7 @@
 ## 12. Uso privado
 
 - [x] 12.1 Iniciar sesión en `ghcr.io` con el token del workflow (por stdin) antes de descargar la imagen, con un mensaje de error que indique qué acceso falta, y verificar con `tests/test_action.py`
+- [x] 12.3 Si no se puede descargar la imagen (paquete privado de una cuenta personal, sin "Manage Actions access"), construirla desde el código de la Action con un aviso, y verificar con `tests/test_action.py`
 - [x] 12.2 Documentar el uso sin hacer nada público (acceso a la Action, acceso al paquete y `packages: read`) en `docs/DEPLOYMENT.md` y en el job de ejemplo
 
 ## Workflow follow-up

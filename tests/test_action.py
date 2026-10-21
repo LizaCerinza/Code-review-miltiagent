@@ -65,3 +65,11 @@ def test_private_ghcr_login_uses_stdin_token():
     assert "--password-stdin" in login
     assert " -p " not in login and "--password " not in login
     assert run.index("docker login") < run.index("docker pull")
+
+
+def test_builds_image_from_action_source_when_pull_fails():
+    """Paquete privado de una cuenta personal: sin acceso al pull, se construye la imagen."""
+    review = next(step for step in ACTION["runs"]["steps"] if step.get("id") == "review")
+    run = review["run"]
+    assert 'docker build --quiet --tag "$IMAGE" "$GITHUB_ACTION_PATH"' in run
+    assert run.index("docker pull") < run.index("docker build") < run.index("docker run")

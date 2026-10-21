@@ -39,7 +39,9 @@ El repo del revisor y su paquete pueden quedar privados. GitHub lo permite solo 
 2. **Acceso a la imagen.** En el paquete (`https://github.com/users/<usuario>/packages/container/package/code-review-miltiagent`): **Package settings → Manage Actions access → Add repository** → el repo objetivo con rol **Read**.
 3. **Permiso en el job.** El job del repo objetivo declara `packages: read` (ya está en [`examples/ai-review-job.yml`](../examples/ai-review-job.yml)). La Action inicia sesión en `ghcr.io` con el token del workflow antes de descargar la imagen.
 
-Si falta alguno de los tres, el paso falla con un mensaje que indica qué acceso agregar.
+**Cuentas personales:** la configuración del paquete puede mostrar solo "Manage Codespaces access" y no "Manage Actions access". En ese caso no hay forma de dar acceso de lectura al repo objetivo. La Action lo resuelve sola: si no puede descargar la imagen, la **construye desde su propio código** (la misma versión) y deja un aviso en el log. Cuesta 1 a 2 minutos más por ejecución y no usa la imagen escaneada por Trivy. Para evitarlo, haz público el paquete.
+
+Si tampoco puede construirla, el paso falla con un mensaje de error.
 
 ## 2. Instalar el revisor en un repo objetivo
 
