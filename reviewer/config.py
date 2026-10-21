@@ -10,6 +10,9 @@ PROVIDER_VALUES = ("azure", "anthropic")
 # Modelo por defecto según el proveedor. En Azure es el nombre del deployment.
 DEFAULT_MODELS = {"azure": "gpt-4.1-mini", "anthropic": "claude-opus-5-5"}
 DEFAULT_AZURE_API_VERSION = "2024-10-21"
+# Los modelos de razonamiento (gpt-5*, o1/o3/o4*) necesitan una versión más nueva de la API.
+DEFAULT_AZURE_REASONING_API_VERSION = "2025-04-01-preview"
+REASONING_EFFORT_VALUES = ("minimal", "low", "medium", "high")
 AGENT_NAMES = ("functional", "security", "design")
 FAIL_ON_VALUES = ("critical", "major", "minor", "info", "none")
 EFFORT_VALUES = ("low", "medium", "high", "xhigh", "max")
@@ -28,6 +31,10 @@ class ReviewConfig:
     agent_models: Mapping[str, str] = field(default_factory=dict)
     effort: str = "high"  # solo Anthropic
     azure_api_version: str = DEFAULT_AZURE_API_VERSION
+    azure_reasoning_api_version: str = DEFAULT_AZURE_REASONING_API_VERSION
+    azure_reasoning_effort: str = "medium"
+    # Deployments de razonamiento con nombres que no empiezan con gpt-5 / o1 / o3 / o4.
+    azure_reasoning_models: tuple[str, ...] = ()
     max_tokens: int = 32_000
     agent_timeout: float = 600.0
     fail_on: str = "critical"
@@ -44,6 +51,12 @@ class ReviewConfig:
     def model_for(self, agent: str) -> str:
         return self.agent_models.get(agent) or self.model or DEFAULT_MODELS[self.provider]
 
+    def is_azure_reasoning(self, model: str) -> bool:
+        """True si el deployment de Azure es un modelo de razonamiento."""
+        return model in self.azure_reasoning_models or model.lower().startswith(
+            ("gpt-5", "o1", "o3", "o4")
+        )
+
     def with_overrides(self, **overrides: Any) -> ReviewConfig:
         """Aplica los valores que no son None (por ejemplo, argumentos de la CLI)."""
         known = {f.name for f in fields(self)}
@@ -59,6 +72,11 @@ class ReviewConfig:
         if self.fail_on not in FAIL_ON_VALUES:
             raise ConfigError(
                 f"fail-on debe ser uno de {', '.join(FAIL_ON_VALUES)}; se recibió '{self.fail_on}'"
+            )
+        if self.azure_reasoning_effort not in REASONING_EFFORT_VALUES:
+            raise ConfigError(
+                "azure-reasoning-effort debe ser uno de "
+                f"{', '.join(REASONING_EFFORT_VALUES)}; se recibió '{self.azure_reasoning_effort}'"
             )
         if self.effort not in EFFORT_VALUES:
             raise ConfigError(
@@ -84,6 +102,7 @@ class ReviewConfig:
         spec_globs = get("REVIEWER_SPEC_GLOBS")
         timeout = get("REVIEWER_AGENT_TIMEOUT")
         fail_on_error = get("REVIEWER_FAIL_ON_AGENT_ERROR")
+        reasoning = get("REVIEWER_AZURE_REASONING_MODELS")
         try:
             return cls().with_overrides(
                 provider=get("REVIEWER_PROVIDER"),
@@ -100,6 +119,9 @@ class ReviewConfig:
                 output_dir=get("REVIEWER_OUTPUT_DIR"),
                 sonar_host=get("SONAR_HOST_URL"),
                 azure_api_version=get("AZURE_OPENAI_API_VERSION"),
+                azure_reasoning_api_version=get("AZURE_OPENAI_REASONING_API_VERSION"),
+                azure_reasoning_effort=get("REVIEWER_AZURE_REASONING_EFFORT"),
+                azure_reasoning_models=_split_globs(reasoning) if reasoning else None,
             )
         except ValueError as error:
             raise ConfigError(str(error)) from error

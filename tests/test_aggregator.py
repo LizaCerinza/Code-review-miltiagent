@@ -1,4 +1,4 @@
-from reviewer.aggregator import aggregate, consolidate, title_similarity
+from reviewer.aggregator import aggregate, consolidate, evidence_similarity, title_similarity
 from reviewer.models import AgentReport, Finding
 
 
@@ -109,3 +109,39 @@ def test_similar_titles_far_apart_or_in_other_files_are_kept():
 def test_title_similarity_ignores_accents_and_word_forms():
     assert title_similarity("No se valida el parámetro", "Falta validación del parametro") >= 0.5
     assert title_similarity("Inyección SQL", "Ordenamiento de resultados") == 0.0
+
+
+# ---- duplicados por evidencia (citas reales de la segunda prueba) ---------------------------
+
+SQL = "const rows = await this.orm.query(\n  `SELECT * FROM users WHERE name LIKE '%${term}%'`,\n);"
+METHOD = ("async search(@Query('q') q: string): Promise<User[]> {\n"
+          "  const term = (q ?? '').trim().toLowerCase();\n"
+          "  const found = await this.users.searchByName(term);\n"
+          "  return found.sort((a, b) => a.name.localeCompare(b.name));\n}")
+
+
+def test_same_quoted_code_from_different_agents_is_merged():
+    merged = consolidate([
+        f(file="repo.ts", line=49, severity="critical", agents=["security"], evidence=SQL,
+          title="Inyección SQL en búsqueda de usuarios por nombre"),
+        f(file="repo.ts", line=48, severity="major", agents=["design", "functional"],
+          evidence="  " + SQL.replace("\n", "\n    "),
+          title="Consulta SQL en searchByName no usa parámetros parametrizados"),
+    ])
+    assert len(merged) == 1
+    assert merged[0].severity.value == "critical"
+    assert merged[0].agents == ["design", "functional", "security"]
+
+
+def test_different_problems_quoting_the_same_method_are_kept():
+    """Ambos citan el método search, pero uno es la validación de q y el otro las capas."""
+    merged = consolidate([
+        f(file="ctrl.ts", line=51, severity="critical", agents=["functional"], evidence=METHOD,
+          title="No valida que el parámetro 'q' esté presente y no vacío"),
+        f(file="ctrl.ts", line=54, severity="major", agents=["design"],
+          evidence="@Get('search')\n@ApiOkResponse({ type: UserResponseDto, isArray: true })\n"
+          + METHOD,
+          title="Controller llama directamente al repositorio en lugar de usar un caso de uso"),
+    ])
+    assert len(merged) == 2
+    assert evidence_similarity(merged[0].evidence, merged[1].evidence) < 0.85

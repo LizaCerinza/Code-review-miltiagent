@@ -106,6 +106,8 @@ Copia el job de [`examples/ai-review-job.yml`](../examples/ai-review-job.yml) de
 | `fail-on` | `critical` | `critical`, `major`, `minor`, `info` o `none` |
 | `fail-on-agent-error` | `false` | Falla el paso si algún agente no termina |
 | `model` | `gpt-4.1-mini` / `claude-opus-5-5` | Modelo de los tres agentes; en Azure, el nombre del deployment |
+| `model-functional` / `model-security` / `model-design` | — | Modelo o deployment para un solo agente (reemplaza a `model` para ese agente) |
+| `azure-reasoning-effort` | `medium` | Esfuerzo de razonamiento de los deployments `gpt-5*` y `o1`/`o3`/`o4*` |
 | `agent-timeout` | `600` | Segundos máximos por agente |
 | `tasks-dir` | `docs/tasks` | Carpeta de las tareas |
 | `spec-globs` | `openspec/specs/**/*.md` | Especificaciones, separadas por comas |
@@ -143,7 +145,17 @@ La orquestación es un grafo de LangGraph. Si defines en el job las variables `L
 
 ### Costos
 
-Cada ejecución hace tres llamadas al modelo, y cada push a un PR abierto la repite. El reporte JSON incluye los tokens de entrada y salida de cada agente. `gpt-4.1-mini` es la opción económica; para una revisión de seguridad más profunda, despliega un modelo más capaz y úsalo solo en ese agente con la variable `REVIEWER_MODEL_SECURITY`.
+Cada ejecución hace tres llamadas al modelo, y cada push a un PR abierto la repite. El reporte JSON incluye los tokens de entrada y salida de cada agente. `gpt-4.1-mini` es la opción económica.
+
+**Combinación recomendada (costo/beneficio):** `gpt-5-mini` solo para el agente funcional y `gpt-4.1-mini` para seguridad y diseño, unos 1 a 2 centavos de dólar por PR. En las pruebas, `gpt-4.1-mini` detectó bien los problemas concretos (inyección SQL, validaciones, capas), pero no verificaba las afirmaciones de la descripción del PR: esa tarea necesita un modelo de razonamiento. Crea los dos deployments en el recurso y configura:
+
+```yaml
+with:
+  model: gpt-4.1-mini
+  model-functional: gpt-5-mini
+```
+
+Los deployments de razonamiento (nombres que empiezan con `gpt-5`, `o1`, `o3` u `o4`) se invocan automáticamente con los parámetros que aceptan y con la versión de la API `2025-04-01-preview`. Si tu deployment tiene otro nombre, decláralo con la variable `REVIEWER_AZURE_REASONING_MODELS`.
 
 ### Uso local con Docker
 

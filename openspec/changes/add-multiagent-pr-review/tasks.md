@@ -73,7 +73,11 @@
 - [x] 11.2 Unir duplicados entre agentes distintos (mismo archivo, ≤ 3 líneas, títulos similares ≥ 0,5) y verificar con `tests/test_aggregator.py` usando los títulos reales de la prueba (9 → 5 hallazgos)
 - [x] 11.3 Agregar a los roles y a las reglas comunes la especialización por área y la coherencia del `summary` con los hallazgos, y verificar que `pytest` pasa
 - [x] 11.4 Reforzar las skills `scope-and-claims` (verificar cada afirmación contra el diff), `acceptance-criteria` (la descripción no es prueba) y `hexagonal-layers` (controller que inyecta un repositorio = `major`), y verificar que todas las skills incluidas siguen siendo válidas
-- [ ] 11.5 Repetir la prueba local sobre la rama `prueba/revisor` y comparar contra los 8 errores sembrados (esperado: se detecta la afirmación falsa del commit, el controller que usa el repositorio queda como `major` y no hay duplicados entre agentes)
+- [x] 11.5 Repetir la prueba local sobre la rama `prueba/revisor` y comparar contra los 8 errores sembrados (resultado: 6 de 8; el controller que usa el repositorio queda `major` y se detecta la falta de tests; la afirmación falsa sigue sin detectarse y la inyección SQL sigue duplicada, ver decisión 14)
+- [x] 11.6 Unir duplicados entre agentes también por evidencia (líneas citadas, Jaccard ≥ 0,85) y verificar con `tests/test_aggregator.py` usando las citas reales de la segunda prueba (la misma consulta SQL se une; dos problemas que citan el mismo método no)
+- [x] 11.7 Soportar modelos de razonamiento en Azure (detección por nombre o `REVIEWER_AZURE_REASONING_MODELS`, `max_completion_tokens`, `reasoning_effort`, sin `temperature`, versión de API `2025-04-01-preview`) y verificar con `tests/test_llm.py` la petición enviada en cada modo
+- [x] 11.8 Agregar a la Action las entradas `model-functional`, `model-security`, `model-design` y `azure-reasoning-effort`, documentar la combinación recomendada en `docs/DEPLOYMENT.md`, y verificar con `tests/test_action.py`
+- [ ] 11.9 Tercera prueba local con `REVIEWER_MODEL_FUNCTIONAL=gpt-5-mini` sobre la misma rama y comparar contra las dos anteriores (detecciones, duplicados y costo)
 
 ## Workflow follow-up
 

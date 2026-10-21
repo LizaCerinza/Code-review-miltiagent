@@ -22,11 +22,28 @@ class AzureOpenAIProvider(LLMProvider):
         endpoint: str = "",
         api_key: str = "",
         api_version: str = "",
+        reasoning_api_version: str = "",
         client: openai.AsyncAzureOpenAI | None = None,
+        http_client: Any = None,
     ):
-        self._client = client or openai.AsyncAzureOpenAI(
-            azure_endpoint=endpoint, api_key=api_key, api_version=api_version
-        )
+        self._http_client = http_client  # transporte simulado en tests
+        self._endpoint = endpoint
+        self._api_key = api_key
+        self._api_version = api_version
+        self._reasoning_api_version = reasoning_api_version or api_version
+        # Un cliente por versión de la API; un cliente inyectado (tests) se usa para todo.
+        self._client = client
+        self._clients: dict[str, openai.AsyncAzureOpenAI] = {}
+
+    def _client_for(self, api_version: str) -> openai.AsyncAzureOpenAI:
+        if self._client is not None:
+            return self._client
+        if api_version not in self._clients:
+            self._clients[api_version] = openai.AsyncAzureOpenAI(
+                azure_endpoint=self._endpoint, api_key=self._api_key, api_version=api_version,
+                http_client=self._http_client, max_retries=0 if self._http_client else 2,
+            )
+        return self._clients[api_version]
 
     async def complete_json(
         self,
@@ -37,8 +54,20 @@ class AzureOpenAIProvider(LLMProvider):
         model: str,
         config: ReviewConfig,
     ) -> LLMResponse:
+        reasoning = config.is_azure_reasoning(model)
+        if reasoning:
+            # gpt-5* / o-series: rechazan `temperature` y `max_tokens`; el límite incluye
+            # los tokens de razonamiento.
+            params: dict[str, Any] = {
+                "max_completion_tokens": config.max_tokens,
+                "reasoning_effort": config.azure_reasoning_effort,
+            }
+            client = self._client_for(self._reasoning_api_version)
+        else:
+            params = {"temperature": TEMPERATURE, "max_tokens": config.max_tokens}
+            client = self._client_for(self._api_version)
         try:
-            response = await self._client.chat.completions.create(
+            response = await client.chat.completions.create(
                 model=model,  # en Azure, el nombre del deployment
                 messages=[
                     {"role": "system", "content": system},
@@ -48,8 +77,7 @@ class AzureOpenAIProvider(LLMProvider):
                     "type": "json_schema",
                     "json_schema": {"name": "agent_report", "strict": True, "schema": schema},
                 },
-                temperature=TEMPERATURE,
-                max_tokens=config.max_tokens,
+                **params,
             )
         except openai.BadRequestError as error:
             if getattr(error, "code", None) == "content_filter":

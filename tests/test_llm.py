@@ -88,6 +88,53 @@ async def test_azure_prompt_blocked_by_content_filter():
         await call(azure(lambda request: httpx2.Response(400, json=error)))
 
 
+def recording_azure(seen):
+    def handler(request):
+        seen.append((str(request.url), json.loads(request.content)))
+        return httpx2.Response(200, json=completion())
+
+    return AzureOpenAIProvider(
+        endpoint=ENDPOINT, api_key="clave", api_version="2024-10-21",
+        reasoning_api_version="2025-04-01-preview",
+        http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(handler)),
+    )
+
+
+async def test_azure_reasoning_model_uses_its_own_parameters_and_api_version():
+    seen = []
+    provider = recording_azure(seen)
+
+    await call(provider, model="gpt-5-mini")
+    await call(provider, model="gpt-4.1-mini")
+
+    (reasoning_url, reasoning), (classic_url, classic) = seen
+    assert "/deployments/gpt-5-mini/" in reasoning_url
+    assert "api-version=2025-04-01-preview" in reasoning_url
+    assert reasoning["max_completion_tokens"] == CONFIG.max_tokens
+    assert reasoning["reasoning_effort"] == "medium"
+    assert "temperature" not in reasoning and "max_tokens" not in reasoning
+    assert "api-version=2024-10-21" in classic_url
+    assert classic["temperature"] == 0.1 and classic["max_tokens"] == CONFIG.max_tokens
+    assert "reasoning_effort" not in classic
+
+
+async def test_reasoning_model_declared_by_name():
+    seen = []
+    config = ReviewConfig(azure_reasoning_models=("revisor-razonamiento",),
+                          azure_reasoning_effort="high")
+    await call(recording_azure(seen), model="revisor-razonamiento", config=config)
+    assert seen[0][1]["reasoning_effort"] == "high"
+
+
+@pytest.mark.parametrize(
+    ("model", "expected"),
+    [("gpt-5-mini", True), ("GPT-5", True), ("o4-mini", True), ("o3", True),
+     ("gpt-4.1-mini", False), ("gpt-4o", False)],
+)
+def test_is_azure_reasoning(model, expected):
+    assert ReviewConfig().is_azure_reasoning(model) is expected
+
+
 # ---- Anthropic -----------------------------------------------------------------
 
 class FakeStream:

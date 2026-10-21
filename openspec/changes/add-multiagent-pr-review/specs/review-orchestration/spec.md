@@ -43,6 +43,10 @@ El revisor SHALL poder usar como proveedor de modelos Azure OpenAI (por defecto,
 - **WHEN** se configura un deployment específico solo para el agente de seguridad
 - **THEN** el agente de seguridad usa ese deployment y los otros dos usan el deployment general
 
+#### Scenario: Modelo de razonamiento en Azure
+- **WHEN** el deployment de un agente es un modelo de razonamiento (por ejemplo `gpt-5-mini`)
+- **THEN** el revisor lo invoca con los parámetros que ese modelo acepta y el agente termina sin error
+
 #### Scenario: Respuesta bloqueada por el filtro de contenido
 - **WHEN** Azure OpenAI bloquea la respuesta de un agente por su filtro de contenido
 - **THEN** ese agente queda con estado "error" y el motivo, y la revisión se marca como incompleta
@@ -55,7 +59,7 @@ Cada hallazgo MUST incluir: archivo, línea (0 si es general), severidad (`criti
 - **THEN** el hallazgo no se publica ni cuenta para el veredicto
 
 ### Requirement: Consolidación de hallazgos duplicados
-Cuando varios agentes reportan el mismo problema, el revisor SHALL publicar un solo hallazgo, que conserva la severidad más alta y lista a todos los agentes que lo reportaron. Es el mismo problema si coinciden archivo, línea y título normalizado, o si agentes distintos lo reportan en el mismo archivo, a pocas líneas de distancia y con títulos de significado equivalente.
+Cuando varios agentes reportan el mismo problema, el revisor SHALL publicar un solo hallazgo, que conserva la severidad más alta y lista a todos los agentes que lo reportaron. Es el mismo problema si coinciden archivo, línea y título normalizado, o si agentes distintos lo reportan en el mismo archivo, a pocas líneas de distancia y con títulos de significado equivalente o citando el mismo código como evidencia.
 
 #### Scenario: Seguridad y diseño reportan lo mismo
 - **WHEN** el agente de seguridad (severidad `major`) y el de diseño (severidad `minor`) reportan el mismo problema en `users.controller.ts:42`
@@ -64,6 +68,14 @@ Cuando varios agentes reportan el mismo problema, el revisor SHALL publicar un s
 #### Scenario: Mismo problema con otras palabras
 - **WHEN** el agente de seguridad reporta "Inyección SQL en consulta LIKE" en la línea 49 y el de diseño reporta "Consulta SQL vulnerable a inyección SQL" en la misma línea
 - **THEN** se publica un único hallazgo atribuido a ambos agentes
+
+#### Scenario: Mismo código citado con títulos distintos
+- **WHEN** el agente de seguridad reporta "Inyección SQL en búsqueda de usuarios" y el de diseño "Consulta SQL no usa parámetros", ambos citando la misma consulta como evidencia
+- **THEN** se publica un único hallazgo con la severidad más alta, atribuido a ambos agentes
+
+#### Scenario: Problemas distintos que citan el mismo método
+- **WHEN** el agente funcional cita el método `search` para "no valida q" y el de diseño cita el mismo método con sus decoradores para "el controller usa el repositorio"
+- **THEN** se publican los dos hallazgos por separado
 
 #### Scenario: Problemas distintos del mismo agente
 - **WHEN** el agente funcional reporta en la misma línea "Falta el caso de uso" y "No se limita a 20 resultados"

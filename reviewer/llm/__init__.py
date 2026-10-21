@@ -49,6 +49,7 @@ def create_provider(config: ReviewConfig, env: Mapping[str, str]) -> LLMProvider
         endpoint=normalize_azure_endpoint(env.get("AZURE_OPENAI_ENDPOINT", "")),
         api_key=env.get("AZURE_OPENAI_API_KEY", ""),
         api_version=config.azure_api_version,
+        reasoning_api_version=config.azure_reasoning_api_version,
     )
 
 

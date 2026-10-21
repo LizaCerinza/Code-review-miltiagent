@@ -7,10 +7,14 @@ import unicodedata
 
 from .models import AgentReport, Confidence, Finding, ReviewResult, Severity
 
-# Duplicados entre agentes: mismo archivo, líneas cercanas y títulos parecidos.
-# Calibrado con hallazgos reales: los duplicados dan >= 0.6 y los problemas distintos <= 0.34.
+# Duplicados entre agentes: mismo archivo, líneas cercanas y títulos parecidos o la misma cita
+# de código. Calibrado con hallazgos reales de gpt-4.1-mini:
+# - títulos: los duplicados dan >= 0.6 y los problemas distintos <= 0.34;
+# - evidencia: la misma cita da 1.0, pero dos problemas distintos que citan el mismo método
+#   dieron 0.71, así que el umbral tiene que ser alto.
 NEAR_LINES = 3
 TITLE_SIMILARITY = 0.5
+EVIDENCE_SIMILARITY = 0.85
 _STOPWORDS = {"del", "las", "los", "una", "uno", "para", "con", "sin", "que", "por", "como",
               "este", "esta", "falta", "directa", "directamente", "endpoint", "usa"}
 
@@ -30,13 +34,28 @@ def title_similarity(a: str, b: str) -> float:
     return len(ta & tb) / min(len(ta), len(tb))
 
 
+def _evidence_lines(evidence: str) -> set[str]:
+    return {re.sub(r"\s+", " ", line).strip() for line in evidence.splitlines() if line.strip()}
+
+
+def evidence_similarity(a: str, b: str) -> float:
+    """Jaccard entre las líneas citadas (sin diferencias de espacios)."""
+    la, lb = _evidence_lines(a), _evidence_lines(b)
+    if not la or not lb:
+        return 0.0
+    return len(la & lb) / len(la | lb)
+
+
 def _same_problem(a: Finding, b: Finding) -> bool:
     """Dos agentes distintos describiendo el mismo problema con otras palabras."""
     return (
         a.file == b.file
         and abs(a.line - b.line) <= NEAR_LINES
         and not set(b.agents) <= set(a.agents)
-        and title_similarity(a.title, b.title) >= TITLE_SIMILARITY
+        and (
+            title_similarity(a.title, b.title) >= TITLE_SIMILARITY
+            or evidence_similarity(a.evidence, b.evidence) >= EVIDENCE_SIMILARITY
+        )
     )
 
 

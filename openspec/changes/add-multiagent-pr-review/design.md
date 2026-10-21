@@ -127,6 +127,15 @@ Ajustes:
 - *No se agrega* una detección determinista de "PR sin tests": la cobertura ya la exige el pipeline del repo objetivo antes de la revisión (`test:cov` con umbral del 80 % y el Quality Gate de Sonar). El agente funcional sigue señalando los criterios de la tarea sin un test específico (`missing-test`, `minor`).
 - *Alternativa descartada para los duplicados*: unir solo por archivo y línea cercana, que habría mezclado los tres problemas distintos que el agente funcional reportó en la misma línea.
 
+**Segunda prueba (mismos errores sembrados, con los ajustes):** detectó 6 de 8 (se sumaron el controller que usa el repositorio como `major` y la falta de tests), y la validación de `q` dejó de duplicarse. Persistieron dos fallas:
+- *Afirmaciones falsas*: ningún hallazgo `unsupported-claim`, y el resumen del agente funcional todavía repetía la descripción antes de contradecirla. Es una limitación del modelo: `gpt-4.1-mini` no ejecuta el procedimiento de la skill.
+- *Inyección SQL duplicada*: seguridad (critical) y diseño+funcional (major) usaron títulos sin palabras en común, pero citaron exactamente el mismo código.
+
+Ajustes:
+- *Duplicados por evidencia*: también se unen hallazgos de agentes distintos, en el mismo archivo y a ≤ 3 líneas, si las líneas de código citadas coinciden (Jaccard ≥ 0,85). El umbral es alto a propósito: dos problemas distintos que citaban el mismo método dieron 0,71. Sobre la segunda prueba: 8 → 7 hallazgos, solo se une la inyección SQL.
+- *Modelos de razonamiento en Azure*: un deployment cuyo nombre empieza con `gpt-5`, `o1`, `o3` u `o4` (o que se declara en `REVIEWER_AZURE_REASONING_MODELS`) se invoca sin `temperature`, con `max_completion_tokens`, con `reasoning_effort` (por defecto `medium`) y con la versión de la API `2025-04-01-preview`, porque la versión GA `2024-10-21` no los soporta. Los demás deployments siguen igual.
+- *Modelo por agente en la Action*: entradas `model-functional`, `model-security` y `model-design`. Combinación recomendada por costo/beneficio: `gpt-5-mini` para el agente funcional (verificar afirmaciones exige razonar) y `gpt-4.1-mini` para seguridad y diseño, que ya rinden bien. Costo estimado: 1 a 2 centavos de dólar por PR.
+
 ## Risks / Trade-offs
 
 - [Falsos positivos que frenan PRs] → Solo bloquea `critical` con confianza `high`, el umbral es configurable y existe `fail_on: none` para empezar en modo solo-comentarios.

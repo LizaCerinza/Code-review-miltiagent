@@ -16,7 +16,8 @@ def test_expected_inputs():
         "provider", "azure-openai-api-key", "azure-openai-endpoint", "azure-openai-api-version",
         "anthropic-api-key", "github-token", "sonar-token", "sonar-host-url", "fail-on",
         "fail-on-agent-error", "model", "agent-timeout", "tasks-dir", "spec-globs",
-        "guidelines-file", "skills-dir", "image",
+        "guidelines-file", "skills-dir", "image", "model-functional", "model-security",
+        "model-design", "azure-reasoning-effort",
     }
 
 
@@ -25,6 +26,7 @@ def test_defaults_match_reviewer_config():
     assert INPUTS["provider"]["default"] == defaults.provider
     assert INPUTS["azure-openai-api-version"]["default"] == defaults.azure_api_version
     assert INPUTS["model"]["default"] == ""
+    assert INPUTS["azure-reasoning-effort"]["default"] == defaults.azure_reasoning_effort
     assert INPUTS["fail-on"]["default"] == defaults.fail_on
     assert INPUTS["fail-on-agent-error"]["default"] == "false"
     assert INPUTS["tasks-dir"]["default"] == defaults.tasks_dir
